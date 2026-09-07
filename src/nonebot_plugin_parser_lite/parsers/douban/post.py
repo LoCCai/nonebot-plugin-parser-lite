@@ -1,4 +1,4 @@
-from enum import Enum
+from enum import StrEnum
 
 from msgspec import Struct, field
 from msgspec.json import Decoder
@@ -10,7 +10,7 @@ from .share import Author, Photo
 from .util import parse_date, parse_rich_content
 
 
-class ImageLayout(str, Enum):
+class ImageLayout(StrEnum):
     ARTICLE = "vertical"
     IMAGE = "horizontal"
 

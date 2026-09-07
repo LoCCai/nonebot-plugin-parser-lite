@@ -1,4 +1,4 @@
-from enum import Enum
+from enum import StrEnum
 from re import Match
 from typing import Final, TypedDict, TypeVar, overload
 from urllib.parse import parse_qs, urlparse
@@ -38,7 +38,7 @@ DOWNLOAD_TIMEOUT: Final[Timeout] = Timeout(
 STICKER_CDN: Final[str] = "https://sticker.sokoko.org/assets/{platform}/{name}.webp"
 
 
-class PlatformEnum(str, Enum):
+class PlatformEnum(StrEnum):
     ACFUN = "acfun"
     BILIBILI = "bilibili"
     DOUYIN = "douyin"

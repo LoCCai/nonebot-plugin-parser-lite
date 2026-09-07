@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from enum import Enum, IntEnum
+from enum import IntEnum, StrEnum
 import re
 from typing import Any
 from urllib.parse import urlsplit
@@ -50,7 +50,7 @@ class BiliVideoQuality(IntEnum):
     _8K = 127
 
 
-class BiliVideoCodecs(str, Enum):
+class BiliVideoCodecs(StrEnum):
     """
     视频的视频流编码枚举
 
