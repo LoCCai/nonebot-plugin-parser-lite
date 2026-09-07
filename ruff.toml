@@ -1,5 +1,5 @@
 line-length = 88
-target-version = "py310"
+target-version = "py311"
 exclude = [
   "src/nonebot_plugin_parser_lite/utils/bilibili/bilibili",
 ]

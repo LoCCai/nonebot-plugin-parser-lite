@@ -62,7 +62,7 @@ class UniHelper:
         :param file: 图片资源
         """
 
-        if isinstance(file, (bytes, bytearray, memoryview)):
+        if isinstance(file, bytes | bytearray | memoryview):
             return Image(raw=file)
 
         return (

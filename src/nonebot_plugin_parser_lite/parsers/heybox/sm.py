@@ -222,6 +222,7 @@ def _AES(v: bytes, k: bytes):
     ct = encryptor.update(v) + encryptor.finalize()
     return ct.hex()
 
+
 def GZIP(o: dict):
     json_str = ujson.dumps(o, ensure_ascii=False)
     stream = gzip.compress(json_str.encode("utf-8"), 2, mtime=0)
@@ -235,7 +236,7 @@ def get_tn(o: dict):
 
     for i in sorted_keys:
         v = o[i]
-        if isinstance(v, (int, float)):
+        if isinstance(v, int | float):
             v = str(v * 10000)
         elif isinstance(v, dict):
             v = get_tn(v)

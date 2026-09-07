@@ -16,6 +16,6 @@ def get_final_stable_path_ultimate(text: str) -> str:
 
 
 def decode_init_state(input_dict: dict[str, Any] | str | bytes) -> dict[str, Any]:
-    if isinstance(input_dict, (str, bytes)):
+    if isinstance(input_dict, str | bytes):
         input_dict = msgspec.json.decode(input_dict, type=dict[str, Any])
     return {get_final_stable_path_ultimate(k): v for k, v in input_dict.items()}
