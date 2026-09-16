@@ -8,8 +8,9 @@ from typing import Any, ClassVar, Literal, cast
 import uuid
 
 from anyio import Path
+from jinja2 import Environment, FileSystemLoader
 from nonebot import logger
-from nonebot_plugin_htmlrender import template_to_pic
+from nonebot_plugin_htmlrender import get_new_page
 import qrcode
 
 from ..config import _nickname, gconfig, pconfig
@@ -32,6 +33,7 @@ from ..exception import (
 )
 from ..helper import ForwardNodeInner, UniHelper, UniMessage
 from ..utils.cache import CacheManager
+from ..utils.common import crop_png
 from ..utils.ffmpeg import FFmpeg
 
 PLACEHOLDER_IMAGE = (
@@ -558,38 +560,42 @@ class Renderer:
                 if await (self.templates_dir / file_name).exists():
                     template_name = file_name
 
+        env = Environment(
+            loader=FileSystemLoader(self.templates_dir),
+            enable_async=True,
+        )
+        env.filters["safe_src"] = safe_src
+        template = env.get_template(template_name)
+        html = await template.render_async(result=template_data, theme=theme)
         if IS_DEBUG:
-            from jinja2 import Environment, FileSystemLoader
-
-            env = Environment(
-                loader=FileSystemLoader(self.templates_dir),
-                enable_async=True,
-            )
-            env.filters["safe_src"] = safe_src
-            template = env.get_template(template_name)
             render_path = (
-                self.templates_dir.parent.parent
+                self.templates_dir
                 / f"{datetime.now().strftime('%Y-%m-%d-%H%M%S')}.html"
             )
             await render_path.write_text(
-                await template.render_async(result=template_data, theme=theme),
+                html,
                 encoding="utf8",
             )
             logger.info(f"已生成调试 HTML: {render_path}")
 
-        return await template_to_pic(
-            template_path=str(self.templates_dir),
-            template_name=template_name,
-            templates={
-                "result": template_data,
-                "theme": theme,
+        async with get_new_page(
+            2,
+            **{
+                "viewport": {"width": 620, "height": 100},
+                "base_url": self.templates_dir.as_uri(),
             },
-            pages={
-                "viewport": {"width": 620, "height": 1},
-                "base_url": f"file://{self.templates_dir}",
-            },
-            filters={"safe_src": safe_src},
-        )
+        ) as page:
+            page.on("console", lambda msg: logger.debug(f"浏览器控制台: {msg.text}"))
+            await page.goto(self.templates_dir.as_uri())
+            await page.set_content(html, wait_until="networkidle")
+            image = await page.screenshot(
+                type="png",
+                full_page=True,
+            )
+            height = await page.locator("body").evaluate(
+                "el => Math.ceil(el.getBoundingClientRect().height)"
+            )
+        return await crop_png(image, height * 2)
 
     async def resolve_parse_result(self, result: ParseResult) -> dict[str, Any]:
         """解析 ParseResult 为模板可用的字典数据"""
