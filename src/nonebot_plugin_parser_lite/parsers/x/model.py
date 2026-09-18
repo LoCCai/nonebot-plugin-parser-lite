@@ -568,8 +568,8 @@ class TweetData(Struct):
     is_translatable: bool = False
     quoted_status_result: TweetEntry | None = None
     retweeted_status_result: TweetEntry | None = None
-    grok_translated_post_with_availability: GrokTranslatedPostWithAvailability = (
-        GrokTranslatedPostWithAvailability()
+    grok_translated_post_with_availability: GrokTranslatedPostWithAvailability = field(
+        default_factory=GrokTranslatedPostWithAvailability
     )
 
     @property
