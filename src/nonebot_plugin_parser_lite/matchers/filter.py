@@ -17,11 +17,11 @@ _DISABLED_GROUPS_SET: set[str] = set()
 _DISABLED_GROUPS_LOCK = asyncio.Lock()
 
 
-async def _write_disabled_groups() -> None:
+async def _write_disabled_groups(groups: set[str]) -> None:
     temp_path = _DISABLED_GROUPS_PATH.with_suffix(".json.tmp")
     try:
         await temp_path.write_text(
-            json.dumps(sorted(_DISABLED_GROUPS_SET), ensure_ascii=False),
+            json.dumps(sorted(groups), ensure_ascii=False),
             encoding="utf-8",
         )
         await temp_path.replace(_DISABLED_GROUPS_PATH)
@@ -32,27 +32,30 @@ async def _write_disabled_groups() -> None:
 async def load_or_initialize_set() -> set[str]:
     """加载或初始化关闭解析的名单"""
     if not await _DISABLED_GROUPS_PATH.exists():
-        await _write_disabled_groups()
+        await _write_disabled_groups(_DISABLED_GROUPS_SET)
     return set(json.loads(await _DISABLED_GROUPS_PATH.read_text(encoding="utf-8")))
 
 
 async def save_disabled_groups():
     """保存关闭解析的名单"""
     async with _DISABLED_GROUPS_LOCK:
-        await _write_disabled_groups()
+        await _write_disabled_groups(_DISABLED_GROUPS_SET)
 
 
 async def set_group_enabled(group_key: str, enabled: bool) -> bool:
     """原子更新群聊开关，返回状态是否发生变化。"""
     async with _DISABLED_GROUPS_LOCK:
         was_disabled = group_key in _DISABLED_GROUPS_SET
+        updated = _DISABLED_GROUPS_SET.copy()
         if enabled:
-            _DISABLED_GROUPS_SET.discard(group_key)
+            updated.discard(group_key)
         else:
-            _DISABLED_GROUPS_SET.add(group_key)
+            updated.add(group_key)
         changed = was_disabled == enabled
         if changed:
-            await _write_disabled_groups()
+            await _write_disabled_groups(updated)
+            _DISABLED_GROUPS_SET.clear()
+            _DISABLED_GROUPS_SET.update(updated)
         return changed
 
 
