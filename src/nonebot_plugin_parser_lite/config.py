@@ -54,8 +54,6 @@ class Config(BaseModel):
     """是否在解析结果中添加原始URL二维码"""
     plite_disabled_platforms: list[PlatformEnum] = []
     """禁用的解析器"""
-    plite_blacklist_users: list[str] = []
-    """黑名单用户列表，这些用户触发的解析将被忽略"""
     plite_bili_video_codes: list[BiliVideoCodecs] = [
         BiliVideoCodecs.AVC,
         BiliVideoCodecs.AV1,
@@ -233,11 +231,6 @@ class Config(BaseModel):
     def video_in_forward(self) -> bool:
         """是否将视频放入内容合并转发"""
         return self.plite_video_in_forward
-
-    @property
-    def blacklist_users(self) -> list[str]:
-        """黑名单用户列表"""
-        return self.plite_blacklist_users
 
     @property
     def download_command(self) -> list[str]:
