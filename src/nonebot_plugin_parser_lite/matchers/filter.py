@@ -6,7 +6,7 @@ from nonebot.adapters import Bot, Event
 from nonebot.permission import SUPERUSER
 from nonebot.rule import to_me
 from nonebot_plugin_alconna import Alconna, Args, Match, UniMessage, on_alconna
-from nonebot_plugin_uninfo import ADMIN, SceneType, Uninfo
+from nonebot_plugin_uninfo import ADMIN, Uninfo
 
 from ..config import pconfig
 
@@ -44,7 +44,7 @@ async def set_target_enabled(target_key: str, enabled: bool) -> bool:
 
 
 def _make_user_key(session: Uninfo, target: str | None = None) -> str:
-    return f"{session.scope}_{SceneType.PRIVATE.name}_{target or session.user.id}"
+    return f"{session.scope}_USER_{target or session.user.id}"
 
 
 def _make_target_key(session: Uninfo, target: str | None = None) -> str:

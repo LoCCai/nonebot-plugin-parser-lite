@@ -179,13 +179,13 @@ async def test_private_superuser_controls_current_or_target_user(switch_state):
     target_user.user.id = TARGET_GROUP
     assert not switches.is_enabled(target_user)
     assert switches._DISABLED_TARGETS_SET == {
-        f"QQClient_PRIVATE_{ADMIN_QQ}",
-        f"QQClient_PRIVATE_{TARGET_GROUP}",
+        f"QQClient_USER_{ADMIN_QQ}",
+        f"QQClient_USER_{TARGET_GROUP}",
     }
     await run_switch(TARGET_GROUP, private=True, enabled=True)
     assert switches.is_enabled(target_user)
     assert not switches.is_enabled(source)
-    assert switches._DISABLED_TARGETS_SET == {f"QQClient_PRIVATE_{ADMIN_QQ}"}
+    assert switches._DISABLED_TARGETS_SET == {f"QQClient_USER_{ADMIN_QQ}"}
     await run_switch(private=True, enabled=True)
     assert not switches._DISABLED_TARGETS_SET
 
