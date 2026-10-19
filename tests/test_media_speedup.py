@@ -9,7 +9,6 @@ from pathlib import Path
 from anyio import Path as AnyPath
 import pytest
 import render_test_support as support
-from render_test_support import ResolvedPathTask
 
 from nonebot_plugin_parser_lite.config import parse_media_speedup_rules
 from nonebot_plugin_parser_lite.constants import PlatformEnum
@@ -47,8 +46,7 @@ def make_result(
 def make_media(cls, tmp_path: Path, name: str, duration: float = 60.0):
     source = tmp_path / name
     source.write_bytes(b"source")
-    cont = cls(path_task=ResolvedPathTask(source), duration=duration)
-    return cont
+    return cls(path_task=support.ResolvedPathTask(source), duration=duration)
 
 
 # --------------------------------------------------------------------------
