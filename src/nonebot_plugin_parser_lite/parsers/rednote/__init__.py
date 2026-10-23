@@ -1,4 +1,3 @@
-import re
 from typing import ClassVar
 
 from ...data import Comment
@@ -12,11 +11,7 @@ from ..base import (
     pconfig,
 )
 from .discovery import decoder as discoveryDecoder
-
-INITIAL_STATE = re.compile(
-    pattern=r"window\.__INITIAL_STATE__=(.*?)</script>",
-    flags=re.DOTALL,
-)
+from .page_state import NotePageUnavailable, note_page_state
 
 
 class RedNoteParser(BaseParser):
@@ -49,12 +44,10 @@ class RedNoteParser(BaseParser):
             headers=self.qq_headers,
         )
         response.raise_for_status()
-        html = response.text
-
-        if matched := INITIAL_STATE.search(html):
-            raw = matched[1].replace("undefined", "null")
-        else:
-            raise ParseException("小红书分享链接失效或内容已删除")
+        try:
+            raw = note_page_state(response.text, str(response.url))
+        except NotePageUnavailable as exc:
+            raise ParseException(str(exc)) from exc
         init_state = discoveryDecoder.decode(raw)
         note_detail = init_state.noteData.data.noteData
         comment_data = init_state.noteData.data.commentData

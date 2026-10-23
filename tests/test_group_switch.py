@@ -1,3 +1,4 @@
+import inspect
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
@@ -123,6 +124,42 @@ async def test_group_admin_target_silently_falls_back_to_current_group(switch_st
 
 
 @pytest.mark.asyncio
+async def test_legacy_group_switch_migrates_once_and_does_not_restore_reenabled_group(
+    switch_state, tmp_path,
+):
+    import json
+
+    legacy = Path(tmp_path / "disabled_groups.json")
+    original = json.dumps([f"QQClient_{CURRENT_GROUP}"])
+    await legacy.write_text(original, encoding="utf-8")
+    await switches.init_disabled_targets()
+    target = context()[2]
+    assert not switches.is_enabled(target)
+    assert switches._DISABLED_TARGETS_SET == {f"QQClient_GROUP_{CURRENT_GROUP}"}
+    assert await legacy.read_text(encoding="utf-8") == original
+    await switches.set_target_enabled(f"QQClient_GROUP_{CURRENT_GROUP}", True)
+    switches._DISABLED_TARGETS_SET.clear()
+    await switches.init_disabled_targets()
+    assert switches.is_enabled(target)
+
+
+def test_existing_blacklist_config_still_applies_after_upgrade(switch_state, monkeypatch):
+    target = context()[2]
+    monkeypatch.setattr(switches.pconfig, "plite_blacklist_users", [f"QQClient_{ADMIN_QQ}"])
+    assert not switches.is_enabled(target)
+    assert not switches.is_enabled(context(private=True)[2])
+
+
+@pytest.mark.asyncio
+async def test_unsupported_legacy_switch_never_silently_reopens_targets(switch_state, tmp_path):
+    legacy = Path(tmp_path / "disabled_groups.json")
+    await legacy.write_text('["unrecognized"]', encoding="utf-8")
+    with pytest.raises(ValueError, match="旧版解析关闭名单"):
+        await switches.init_disabled_targets()
+    assert not await switches._DISABLED_TARGETS_PATH.exists()
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("handler", [switches.handle_enable, switches.handle_disable])
 @pytest.mark.parametrize(
     ("superuser", "role", "allowed"),
@@ -141,7 +178,12 @@ async def test_registered_command_permission(handler, superuser, role, allowed):
         if any(dependent.call is handler for dependent in matcher.handlers)
     )
     bot, event, session = context(superuser=superuser)
-    session.member = Member(session.user, roles=[Role(role)])
+    role_kwargs = (
+        {"roles": [Role(role)]}
+        if "roles" in inspect.signature(Member).parameters
+        else {"role": Role(role)}
+    )
+    session.member = Member(session.user, **role_kwargs)
     cached_session = DependencyCache()
     cached_session.set_result(session)
     assert (

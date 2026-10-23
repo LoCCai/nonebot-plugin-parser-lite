@@ -27,6 +27,12 @@ from ..parsers.base import BaseParser, ParseResult
 from ..render import RENDERER
 from ..utils.common import LimitedSizeDict
 from ..utils.media_edit import apply_media_speedup
+from .community_dedup import (
+    ParseAttempt,
+    community_parse_dedup,
+    community_parse_key,
+)
+from .filter import _make_target_key
 from .rule import Searched, SearchResult, _extract_text, on_keyword_regex
 
 # 关键词 / 类型 -> Parser 映射
@@ -151,12 +157,26 @@ async def _get_or_parse_result(sr: SearchResult) -> ParseResult:
     return await asyncio.shield(task)
 
 
-@UniHelper.with_reaction
 async def parser_handler(
     session: Uninfo,
     sr: SearchResult = Searched(),
 ):
     """统一的解析处理器"""
+    key = community_parse_key(_make_target_key(session), sr)
+    if key is None:
+        await _parse_and_send(session, sr)
+        return
+    community_parse_dedup.window_seconds = pconfig.community_parse_dedup_minutes * 60
+    with community_parse_dedup.acquire(key) as attempt:
+        if attempt is None:
+            return
+        await _parse_and_send(session, sr, attempt)
+
+
+@UniHelper.with_reaction
+async def _parse_and_send(
+    session: Uninfo, sr: SearchResult, attempt: ParseAttempt | None = None,
+):
     result = await _get_or_parse_result(sr)
 
     # 上传前倍速必须在渲染之前定稿，卡片上的时长才是最终文件的时长
@@ -181,6 +201,8 @@ async def parser_handler(
             summary_node=summary_msg if summary_in_forward else None,
         ):
             await send_with_media_fallback(content_msg, result)
+    if attempt is not None:
+        attempt.succeeded = True
 
 
 @driver.on_startup
