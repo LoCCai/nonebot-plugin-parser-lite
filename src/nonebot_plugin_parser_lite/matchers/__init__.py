@@ -26,7 +26,6 @@ from ..helper import UniHelper
 from ..parsers.base import BaseParser, ParseResult
 from ..render import RENDERER
 from ..utils.common import LimitedSizeDict
-from ..utils.media_edit import apply_media_speedup
 from .rule import Searched, SearchResult, _extract_text, on_keyword_regex
 
 # 关键词 / 类型 -> Parser 映射
@@ -158,10 +157,6 @@ async def parser_handler(
 ):
     """统一的解析处理器"""
     result = await _get_or_parse_result(sr)
-
-    # 上传前倍速必须在渲染之前定稿，卡片上的时长才是最终文件的时长
-    apply_media_speedup(result)
-
     summary_msg = await RENDERER.render_messages(result)
     summary_in_forward = pconfig.summary_in_forward and not pconfig.lazy_download
     if not summary_in_forward:
