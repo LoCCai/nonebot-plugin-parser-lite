@@ -278,7 +278,6 @@ class Video:
 
         params = {
             "aid": self.aid,
-            "bvid": self.bvid,
             "cid": cid,
             "up_mid": up_mid or await self.get_up_mid(),
             "web_location": "333.788",
