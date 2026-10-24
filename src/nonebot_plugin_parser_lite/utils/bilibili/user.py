@@ -210,8 +210,13 @@ async def get_black_list(
     result = (
         await HTTP_CLIENT.get(
             url="https://api.bilibili.com/x/relation/blacks",
-            params={"ps": page_size, "pn": page_index},
-            cookies=credential.get_cookies(),
+            params=enc_app_sign(
+                {
+                    "access_key": credential.access_token,
+                    "ps": page_size,
+                    "pn": page_index,
+                }
+            ),
         )
     ).json()
     if result["code"] != 0:
