@@ -70,13 +70,10 @@ categories:
     when:
       labels:
         - chore
-        - internal
-        - maintenance
   - title: 🚦 测试
     exclusive: true
     when:
       labels:
-        - test
         - tests
   - title: 📦 依赖更新
     exclusive: true
@@ -84,6 +81,11 @@ categories:
       labels:
         - dependencies
     collapse-after: 15
+  - title: 🎨 资源更新
+    exclusive: true
+    when:
+      labels:
+        - resources
   - title: 💫 杂项
     exclusive: true
 change-template: "- $TITLE @$AUTHOR (#$NUMBER)"
