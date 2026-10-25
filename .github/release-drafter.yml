@@ -53,17 +53,13 @@ categories:
   - title: 🚀 新功能
     exclusive: true
     when:
-      - labels:
-          - enhancement
-      - conventional:
-          type: feat
+      labels:
+        - enhancement
   - title: 🐛 Bug 修复
     exclusive: true
     when:
-      - labels:
-          - bug
-      - conventional:
-          type: fix
+      labels:
+        - bug
   - title: 📝 文档更新
     exclusive: true
     when:
@@ -72,26 +68,16 @@ categories:
   - title: 👻 自动化程序
     exclusive: true
     when:
-      - labels:
-          - chore
-          - internal
-          - maintenance
-      - conventional:
-          type: chore
-      - paths:
-          - ".github/**"
+      labels:
+        - chore
+        - internal
+        - maintenance
   - title: 🚦 测试
     exclusive: true
     when:
-      - labels:
-          - test
-          - tests
-      - conventional:
-          types:
-            - test
-            - tests
-      - paths:
-          - "tests/**"
+      labels:
+        - test
+        - tests
   - title: 📦 依赖更新
     exclusive: true
     when:
