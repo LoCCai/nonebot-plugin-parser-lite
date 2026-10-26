@@ -114,7 +114,7 @@ def _text_node_items(
 
 
 def _text_node_plain_text(nodes: Iterable[dynamic_pb2.TextNode]) -> str:
-    """提取文本节点中的原始文字，并保留节点携带的换行。"""
+    """提取文本节点中的原始文字，并保留节点携带的换行"""
     parts: list[str] = []
     for node in nodes:
         kind = node.WhichOneof("text")

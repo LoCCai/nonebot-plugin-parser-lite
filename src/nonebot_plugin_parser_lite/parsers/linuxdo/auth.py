@@ -19,14 +19,14 @@ CLEARED_COOKIE_VALUES = frozenset({"", "deleted", "null", "none", "undefined", "
 
 
 def is_cleared_cookie(value: str | None) -> bool:
-    """判断 Cookie 值是否为空值或服务端下发的清除占位值。"""
+    """判断 Cookie 值是否为空值或服务端下发的清除占位值"""
     if value is None:
         return True
     return value.strip().strip('"').lower() in CLEARED_COOKIE_VALUES
 
 
 def drop_cleared_cookies(cookies: dict[str, str], *, source: str) -> dict[str, str]:
-    """剔除空值 Cookie，避免无效凭据被采纳或写入缓存。"""
+    """剔除空值 Cookie，避免无效凭据被采纳或写入缓存"""
     kept = {
         name: value for name, value in cookies.items() if not is_cleared_cookie(value)
     }
@@ -37,7 +37,7 @@ def drop_cleared_cookies(cookies: dict[str, str], *, source: str) -> dict[str, s
 
 
 def format_response_diagnostics(response: UniResponse) -> str:
-    """格式化不含 Cookie 和正文的响应诊断信息。"""
+    """格式化不含 Cookie 和正文的响应诊断信息"""
     headers = response.headers
     cf_headers = sorted(name for name in headers if name.lower().startswith("cf-"))
     return (
@@ -50,7 +50,7 @@ def format_response_diagnostics(response: UniResponse) -> str:
 
 
 class LinuxDoAuth:
-    # 管理 Cookie、登录态验证和服务端 Cookie 续用。
+    # 管理 Cookie、登录态验证和服务端 Cookie 续用
 
     _VALIDATION_TTL = 10 * 60
     _FAILED_VALIDATION_TTL = 60
@@ -218,7 +218,7 @@ class LinuxDoAuth:
             response_diagnostics = format_response_diagnostics(response)
             if response.status_code == 404:
                 # Discourse 对匿名请求的 /session/current.json 返回 404，
-                # 据此判定为未登录，而不是「无法确认」。
+                # 据此判定为未登录，而不是「无法确认」
                 logger.info(f"Linux.do 登录态判定: 未登录 {response_diagnostics}")
                 return self._set_validation(False, self._FAILED_VALIDATION_TTL)
             if response.status_code != 200:
@@ -255,7 +255,7 @@ class LinuxDoAuth:
             cookies = await self.cookies()
             # 认证类失败说明缓存里「已登录」的结论可能过时：让它失效后重新探测，
             # 但 60 秒内只确认一次，且并发调用共享同一次探测结果，
-            # 避免连续失败的主题把 /session/current.json 打成风控。
+            # 避免连续失败的主题把 /session/current.json 打成风控
             now = monotonic()
             if now - self._failed_probe_at >= self._FAILED_VALIDATION_TTL:
                 self._failed_probe_at = now

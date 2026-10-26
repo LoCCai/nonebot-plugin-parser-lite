@@ -23,11 +23,7 @@ _TRANSCODE_LIMITS: WeakKeyDictionary[asyncio.AbstractEventLoop, asyncio.Semaphor
 
 
 def get_transcode_limit() -> asyncio.Semaphore:
-    """返回当前事件循环共享的转码信号量
-
-    信号量不能跨事件循环复用，因此按事件循环缓存。懒下载发生在原消息处理
-    结束后，也必须走同一份限制。
-    """
+    """返回当前事件循环共享的转码信号量"""
     loop = asyncio.get_running_loop()
     cached = _TRANSCODE_LIMITS.get(loop)
     if cached is None:
@@ -464,7 +460,7 @@ class FFmpeg:
         max_size_mb: int = 90,
         on_progress: Callable[[int], None] | None = None,
     ) -> Path:
-        """让 ffmpeg 处理加密、初始化段和字节范围等完整 HLS 语义。"""
+        """让 ffmpeg 处理加密、初始化段和字节范围等完整 HLS 语义"""
         temp_path = cls.temporary_output_path(output_path)
         input_options: list[str] = []
         if headers:
@@ -586,7 +582,7 @@ class FFmpeg:
         video_probe = await cls._probe_media(video_path)
         duration = cls._get_duration(video_probe, video_path)
         video_fps = cls._get_video_frame_rate(video_probe, video_path)
-        # 多读取一轮可避免部分可变帧率素材在末段 trim 时缺最后一帧。
+        # 多读取一轮可避免部分可变帧率素材在末段 trim 时缺最后一帧
         inputs = [
             "-stream_loop",
             str(loop),
@@ -692,7 +688,7 @@ class FFmpeg:
         """裁切并拼接保留区间
 
         消音表达式在 split 之前作用于原始时间轴，因此消音区间不需要随裁切
-        重新映射。音频只取第一条流，多轨产物在 IM 侧基本只有第一条会被播。
+        重新映射。音频只取第一条流，多轨产物在 IM 侧基本只有第一条会被播
 
         :return: (滤镜片段, 视频输出标签, 音频输出标签)
         """
@@ -884,7 +880,7 @@ class FFmpeg:
             "-af",
             f"atempo={cls._format_filter_number(speed_ratio)}",
         ]
-        # 编码器按输出后缀决定，码率沿用源音频。
+        # 编码器按输出后缀决定，码率沿用源音频
         if bitrate := cls._get_stream_bitrate(probe, "audio"):
             cmd += ["-b:a", str(bitrate)]
         logger.info(f"Editing audio '{input_path.name}' as '{output_path.name}'")

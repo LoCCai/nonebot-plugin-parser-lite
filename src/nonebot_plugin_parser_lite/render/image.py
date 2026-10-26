@@ -1,7 +1,8 @@
 """将 Theme API 数据渲染为编码后的图片"""
 
 import asyncio
-from datetime import datetime
+
+# from datetime import datetime
 from io import BytesIO
 import re
 from typing import Literal
@@ -45,10 +46,10 @@ async def render_theme_data(
     html = (
         f"{html[: head.end()]}\n{style}{html[head.end() :]}" if head else style + html
     )
-    if debug:
-        path = TEMPLATES_DIR / f"{datetime.now().strftime('%Y-%m-%d-%H%M%S')}.html"
-        await path.write_text(html, encoding="utf-8")
-        logger.info(f"已生成调试 HTML: {path}")
+    # if debug:
+    #     path = TEMPLATES_DIR / f"{datetime.now().strftime('%Y-%m-%d-%H%M%S')}.html"
+    #     await path.write_text(html, encoding="utf-8")
+    #     logger.info(f"已生成调试 HTML: {path}")
 
     canvas = await asyncio.to_thread(
         render_html,

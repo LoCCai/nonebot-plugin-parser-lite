@@ -226,7 +226,7 @@ class BaseParser:
         text = searched.url
         for pattern, handler, param_rules in handlers:
             # pattern 是当初 handle 时 compile 出来的正则；参数规则也必须复核，
-            # 因为同一 keyword 下可能有多个只靠 query 区分的 handler。
+            # 因为同一 keyword 下可能有多个只靠 query 区分的 handler
             if pattern.search(text) and self._match_param_rules(searched, param_rules):
                 result = await handler(self, searched)
                 ratio = (

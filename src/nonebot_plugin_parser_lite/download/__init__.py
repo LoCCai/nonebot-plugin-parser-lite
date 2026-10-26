@@ -317,7 +317,7 @@ class StreamDownloader:
                 keep_part=False,
             )
         # 编码响应的 Content-Length 是压缩传输体大小，而 aiter_bytes()
-        # 返回解码后的文件内容，不能用前者校验后者。
+        # 返回解码后的文件内容，不能用前者校验后者
         content_length = (
             None if zipped_content else response.headers.get("content-length")
         )

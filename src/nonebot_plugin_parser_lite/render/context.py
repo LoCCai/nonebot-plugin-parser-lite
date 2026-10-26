@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import asyncio
 import base64
 from collections.abc import Awaitable, Callable, Iterable, Mapping
@@ -71,11 +69,7 @@ async def safe_src(
     *,
     return_none_on_fail: bool = False,
 ) -> str | None:
-    """把模型对象的资源方法解析成浏览器可用的 URI。
-
-    该函数只供数据转换层使用。主题模板拿到的已经是 URI，不再接触
-    Python 模型或异步方法。
-    """
+    """把模型对象的资源方法解析成浏览器可用的 URI"""
     fallback = None if return_none_on_fail else PLACEHOLDER_IMAGE
     try:
         if obj is None or not hasattr(obj, method):
@@ -104,11 +98,7 @@ async def build_theme_data(
     max_comments: int,
     append_qrcode: bool,
 ) -> ThemeData:
-    """构造主题 API v1 数据。
-
-    返回值只包含 JSON-like 数据：字典、列表、字符串、数字、布尔值和
-    ``None``。主题因此不需要知道解析器内部的数据类或资源获取方法
-    """
+    """构造主题 API v1 数据"""
     token = _resource_limit.set(asyncio.Semaphore(MAX_CONCURRENT_RESOURCES))
     try:
         post = await _serialize_result(result, max_comments=max_comments)
@@ -400,7 +390,7 @@ def _build_qrcode(url: str) -> str:
 
 
 def _escape_html(value: Any) -> Any:
-    """递归转义传给主题模板的字符串值。"""
+    """递归转义传给主题模板的字符串值"""
     if isinstance(value, str):
         return escape(value, quote=True)
     if isinstance(value, Mapping):

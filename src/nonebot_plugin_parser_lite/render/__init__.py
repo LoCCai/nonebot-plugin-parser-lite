@@ -174,7 +174,7 @@ ForwardItem = TypeVar("ForwardItem")
 def split_forward_content(
     content: ForwardNodeInner | _ForwardText, max_len: int
 ) -> Sequence[ForwardNodeInner]:
-    """按文字阈值拆分，混合消息保留各消息段的顺序。"""
+    """按文字阈值拆分，混合消息保留各消息段的顺序"""
     if isinstance(content, _ForwardText):
         return content.split(max_len)
     if isinstance(content, str):

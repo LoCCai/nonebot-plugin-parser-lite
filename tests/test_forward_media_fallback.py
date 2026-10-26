@@ -64,7 +64,7 @@ async def test_file_upload_uses_its_configured_timeout(
 
     monkeypatch.setattr(UniMessage, "send", send)
     monkeypatch.setattr(pconfig, "plite_file_upload_timeout", upload_timeout)
-    # /bm 的纯文件发送不需要构造解析结果，普通和懒下载共用同一边界。
+    # /bm 的纯文件发送不需要构造解析结果，普通和懒下载共用同一边界
     await send_with_media_fallback(UniMessage(File(path="audio.mp3")))
     assert calls == [{"_timeout": upload_timeout or gconfig.api_timeout}]
 
@@ -236,7 +236,7 @@ async def test_explicit_upload_failure_retries_only_failed_chunk(monkeypatch, er
         if len(calls) == 3:
             assert kwargs == {"fallback": False}
         if message is messages[1]:
-            # 模拟 exporter 修改原消息后才报错。
+            # 模拟 exporter 修改原消息后才报错
             message[0].children.clear()
             raise error
 
@@ -498,7 +498,7 @@ async def test_split_video_fallback_does_not_resend_successful_packet(monkeypatc
 
     monkeypatch.setattr(UniMessage, "send", send)
     await send_with_media_fallback(message, make_result())
-    # 第一份省略视频的分包成功；第二份才需要变成文字。
+    # 第一份省略视频的分包成功；第二份才需要变成文字
     assert "视频已省略" in text_of(calls[1])
     for packet in calls[3:]:
         assert "视频已省略" not in text_of(packet)
@@ -539,7 +539,7 @@ async def test_fallback_text_uses_normal_split_and_pack_rules(monkeypatch, text)
     result.content = [text]
     normal = [packet async for packet in Renderer().send_content(result)]
     normal_nodes = [node for packet in normal for node in packet[0].children]
-    # 输入与普通渲染相同的作者前缀，检查 fallback 新增说明之外的正文。
+    # 输入与普通渲染相同的作者前缀，检查 fallback 新增说明之外的正文
     fallback = build_text_fallback(forward(f"tester：{text}", Video(raw=b"v")), result)
     fallback_nodes = [node for packet in fallback for node in packet[0].children]
     body = [
