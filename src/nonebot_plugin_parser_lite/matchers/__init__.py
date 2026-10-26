@@ -161,6 +161,12 @@ async def parser_handler(
     sr: SearchResult = Searched(),
 ):
     """统一的解析处理器"""
+    platforms = pconfig.parse_dedup_platforms
+    if platforms is not None:
+        parser_cls = _KEYWORD_CLASS_MAP.get(sr.keyword)
+        if parser_cls is None or parser_cls.platform.name not in platforms:
+            await _parse_and_send(session, sr)
+            return
     key = community_parse_key(_make_target_key(session), sr)
     community_parse_dedup.window_seconds = pconfig.parse_dedup_minutes * 60
     async with community_parse_dedup.acquire(key) as attempt:

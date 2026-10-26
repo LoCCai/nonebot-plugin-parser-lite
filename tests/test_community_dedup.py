@@ -47,6 +47,11 @@ def pipeline(monkeypatch):
         yield "body"
 
     monkeypatch.setattr(matchers, "community_parse_dedup", cooldown.CommunityParseDeduplicator())
+    monkeypatch.setattr(matchers, "_KEYWORD_CLASS_MAP", {
+        keyword: parser
+        for parser in (TapTapParser, DsParser, BilibiliParser, DouyinParser, KuaiShouParser, NCMParser, WeiBoParser)
+        for keyword, _pattern, _params in parser._key_patterns
+    })
     monkeypatch.setattr(matchers, "_get_or_parse_result", parsed)
     monkeypatch.setattr(matchers.RENDERER, "render_messages", rendered)
     monkeypatch.setattr(matchers.RENDERER, "send_content", content)
@@ -55,6 +60,7 @@ def pipeline(monkeypatch):
     monkeypatch.setattr(matchers.pconfig, "plite_lazy_download", False)
     monkeypatch.setattr(matchers.pconfig, "plite_summary_in_forward", False)
     monkeypatch.setattr(matchers.pconfig, "plite_parse_dedup_minutes", 30)
+    monkeypatch.setattr(matchers.pconfig, "plite_parse_dedup_platforms", None)
     token = current_event.set(object())
     yield SimpleNamespace(parsed=parsed, rendered=rendered, sent=sent, reactions=reactions)
     current_event.reset(token)
@@ -330,6 +336,52 @@ async def test_other_platforms_share_the_configured_cooldown(pipeline, parser, u
     assert pipeline.parsed.await_count == 3
 
 
+@pytest.mark.asyncio
+@pytest.mark.parametrize(("platforms", "parser", "url", "count"), [
+    (["taptap", "ds"], TapTapParser, "https://www.taptap.cn/moment/123", 1),
+    (["taptap", "ds"], DsParser, "https://ds.163.com/feed/abc123", 1),
+    (["taptap", "ds"], BilibiliParser, "https://www.bilibili.com/video/BV1xx411c7mD", 2),
+    (["bilibili"], BilibiliParser, "https://www.bilibili.com/video/BV1xx411c7mD", 1),
+    (["bilibili"], BilibiliParser, "BV1xx411c7mD", 1),
+    (["bilibili"], BilibiliParser, "https://b23.tv/abc123", 1),
+    (["bilibili"], DouyinParser, "https://www.douyin.com/video/123456789", 2),
+    ([], TapTapParser, "https://www.taptap.cn/moment/123", 2),
+    ([], BilibiliParser, "https://www.bilibili.com/video/BV1xx411c7mD", 2),
+])
+async def test_cooldown_applies_only_to_selected_platforms(pipeline, monkeypatch, platforms, parser, url, count):
+    monkeypatch.setattr(matchers.pconfig, "plite_parse_dedup_platforms", platforms)
+    sr = search(url, parser)
+    await matchers.parser_handler(session(), sr)
+    await matchers.parser_handler(session(user="10002"), sr)
+    assert pipeline.parsed.await_count == count
+    assert pipeline.rendered.await_count == count
+    assert pipeline.sent.await_count == count * 2
+    assert pipeline.reactions.await_count == count * 2
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("platforms", [[], ["taptap"]])
+async def test_excluded_platforms_bypass_inflight_deduplication(pipeline, monkeypatch, platforms):
+    monkeypatch.setattr(matchers.pconfig, "plite_parse_dedup_platforms", platforms)
+    started, finish = asyncio.Event(), asyncio.Event()
+
+    async def parse(_sr):
+        started.set()
+        await finish.wait()
+        return object()
+
+    pipeline.parsed.side_effect = parse
+    sr = search("https://www.bilibili.com/video/BV1xx411c7mD", BilibiliParser)
+    first = asyncio.create_task(matchers.parser_handler(session(), sr))
+    await started.wait()
+    second = asyncio.create_task(matchers.parser_handler(session(user="10002"), sr))
+    await asyncio.sleep(0)
+    assert pipeline.parsed.await_count == 2
+    finish.set()
+    await asyncio.gather(first, second)
+    assert pipeline.sent.await_count == 4
+
+
 def test_unlisted_platforms_also_receive_a_cooldown_key():
     sr = SimpleNamespace(keyword="future.example.com", cache_key="future:post/123")
     assert cooldown.community_parse_key("QQClient_GROUP_1", sr) == (
@@ -413,3 +465,22 @@ def test_plugin_prefers_new_environment_name_even_when_disabling_cooldown(monkey
     monkeypatch.setenv("PLITE_PARSE_DEDUP_MINUTES", "0")
     monkeypatch.setenv("PLITE_COMMUNITY_PARSE_DEDUP_MINUTES", "15")
     assert get_plugin_config(Config).parse_dedup_minutes == 0
+
+
+@pytest.mark.parametrize(("value", "expected"), [
+    ("null", None),
+    ("[]", []),
+    ('["taptap", "ds"]', ["taptap", "ds"]),
+    ('["bilibili"]', ["bilibili"]),
+])
+def test_plugin_loads_platform_selection_from_environment(monkeypatch, value, expected):
+    monkeypatch.setenv("PLITE_PARSE_DEDUP_PLATFORMS", value)
+    assert get_plugin_config(Config).parse_dedup_platforms == expected
+
+
+def test_platform_selection_defaults_to_all_and_rejects_unknown_platforms():
+    from pydantic import ValidationError
+
+    assert Config().parse_dedup_platforms is None
+    with pytest.raises(ValidationError):
+        Config(plite_parse_dedup_platforms=["typo"])

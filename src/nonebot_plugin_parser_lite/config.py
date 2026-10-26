@@ -77,9 +77,11 @@ class Config(BaseModel):
     plite_disabled_platforms: list[PlatformEnum] = []
     """禁用的解析器"""
     plite_parse_dedup_minutes: int | None = Field(default=None, ge=0, le=10080)
-    """所有平台同会话重复解析忽略分钟数；未设置时沿用旧项，0 仅抑制并发重复"""
+    """同会话重复解析忽略分钟数；未设置时沿用旧项，0 仅抑制并发重复"""
+    plite_parse_dedup_platforms: list[PlatformEnum] | None = None
+    """开启解析冷却的平台；None 为全部，空列表为全部关闭"""
     plite_community_parse_dedup_minutes: int = Field(default=30, ge=0, le=10080)
-    """旧配置名，兼容已有环境配置；同样对所有平台生效"""
+    """旧配置名，兼容已有环境配置；同样受平台范围配置控制"""
     plite_bili_video_codes: list[BiliVideoCodecs] = [
         BiliVideoCodecs.AVC,
         BiliVideoCodecs.AV1,
@@ -203,6 +205,10 @@ class Config(BaseModel):
         if self.plite_parse_dedup_minutes is not None:
             return self.plite_parse_dedup_minutes
         return self.plite_community_parse_dedup_minutes
+
+    @property
+    def parse_dedup_platforms(self) -> list[PlatformEnum] | None:
+        return self.plite_parse_dedup_platforms
 
     @property
     def bili_video_codes(self) -> list[BiliVideoCodecs]:
