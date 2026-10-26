@@ -166,8 +166,12 @@ async def parser_handler(
         await _parse_and_send(session, sr)
         return
     community_parse_dedup.window_seconds = pconfig.community_parse_dedup_minutes * 60
-    with community_parse_dedup.acquire(key) as attempt:
+    async with community_parse_dedup.acquire(key) as attempt:
         if attempt is None:
+            return
+        if attempt.succeeded:
+            if pconfig.lazy_download and attempt.result is not None:
+                await LazyManager.add(LazyManager.session_key(session), attempt.result)
             return
         await _parse_and_send(session, sr, attempt)
 
@@ -177,9 +181,13 @@ async def _parse_and_send(
     session: Uninfo, sr: SearchResult, attempt: ParseAttempt | None = None,
 ):
     result = await _get_or_parse_result(sr)
+    if attempt is not None and pconfig.lazy_download:
+        attempt.result = result
     summary_msg = await RENDERER.render_messages(result)
     summary_in_forward = pconfig.summary_in_forward and not pconfig.lazy_download
     if not summary_in_forward:
+        if attempt is not None:
+            attempt.output_started = True
         await send_with_media_fallback(summary_msg, result)
 
     if pconfig.lazy_download:
@@ -195,6 +203,8 @@ async def _parse_and_send(
             result,
             summary_node=summary_msg if summary_in_forward else None,
         ):
+            if attempt is not None:
+                attempt.output_started = True
             await send_with_media_fallback(content_msg, result)
     if attempt is not None:
         attempt.succeeded = True

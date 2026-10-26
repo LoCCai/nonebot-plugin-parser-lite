@@ -1,43 +1,74 @@
-"""Bounded per-target cooldown for repeated community post parsing."""
+"""Process-local, time-limited cooldown for repeated community post parsing."""
 
+import asyncio
 from collections import OrderedDict
-from collections.abc import Hashable, Iterator
-from contextlib import contextmanager
-from dataclasses import dataclass
+from collections.abc import AsyncIterator, Hashable
+from contextlib import asynccontextmanager
+from dataclasses import dataclass, field
 import time
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from ..data import ParseResult
 
 
 @dataclass(slots=True)
 class ParseAttempt:
     succeeded: bool = False
+    result: "ParseResult | None" = None
+    output_started: bool = False
+    retry_claimed: bool = False
+    finished: asyncio.Event = field(default_factory=asyncio.Event)
+    waiters: int = 0
 
 
 class CommunityParseDeduplicator:
-    def __init__(self, *, window_seconds: float = 1800, max_entries: int = 8192):
+    def __init__(self, *, window_seconds: float = 1800):
         self.window_seconds = window_seconds
-        self.max_entries = max_entries
-        self._recent: OrderedDict[Hashable, float] = OrderedDict()
-        self._active: set[Hashable] = set()
+        self._recent: OrderedDict[Hashable, tuple[float, ParseAttempt]] = OrderedDict()
+        self._active: dict[Hashable, ParseAttempt] = {}
 
-    @contextmanager
-    def acquire(self, key: Hashable) -> Iterator[ParseAttempt | None]:
+    @asynccontextmanager
+    async def acquire(self, key: Hashable) -> AsyncIterator[ParseAttempt | None]:
         now = time.monotonic()
-        while self._recent and next(iter(self._recent.values())) + self.window_seconds <= now:
+        while self._recent and next(iter(self._recent.values()))[0] + self.window_seconds <= now:
             self._recent.popitem(last=False)
-        if key in self._active or key in self._recent:
-            yield None
+        if recent := self._recent.get(key):
+            yield recent[1]
             return
 
-        self._active.add(key)
-        attempt = ParseAttempt()
+        if attempt := self._active.get(key):
+            attempt.waiters += 1
+            try:
+                # The elected retry clears the event before other waiters resume.
+                while not attempt.finished.is_set():
+                    await attempt.finished.wait()
+                if attempt.succeeded:
+                    yield attempt
+                    return
+                if attempt.retry_claimed or attempt.output_started:
+                    yield None
+                    return
+                attempt.retry_claimed = True
+                attempt.finished.clear()
+            finally:
+                attempt.waiters -= 1
+                if not attempt.waiters and attempt.finished.is_set():
+                    if self._active.get(key) is attempt:
+                        self._active.pop(key)
+        else:
+            attempt = ParseAttempt()
+            self._active[key] = attempt
         try:
             yield attempt
-            if attempt.succeeded and self.window_seconds > 0:
-                self._recent[key] = time.monotonic()
-                while len(self._recent) > self.max_entries:
-                    self._recent.popitem(last=False)
         finally:
-            self._active.discard(key)
+            if attempt.succeeded and self.window_seconds > 0:
+                self._recent[key] = time.monotonic(), attempt
+            attempt.finished.set()
+            # Keep a failed first attempt until a waiter can claim its single retry.
+            if attempt.succeeded or attempt.output_started or attempt.retry_claimed or not attempt.waiters:
+                if self._active.get(key) is attempt:
+                    self._active.pop(key)
 
 
 community_parse_dedup = CommunityParseDeduplicator()
