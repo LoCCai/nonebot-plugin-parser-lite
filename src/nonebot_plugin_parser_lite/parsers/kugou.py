@@ -111,8 +111,14 @@ class KuGouParser(BaseParser):
         ):
             with contextlib.suppress(json.JSONDecodeError):
                 smarty_data = json.loads(smarty_match[1])
-                if isinstance(smarty_data, list) and smarty_data:
-                    return smarty_data[0].get("hash", "").upper()
+                if (
+                    isinstance(smarty_data, list)
+                    and smarty_data
+                    and isinstance(smarty_data[0], dict)
+                ):
+                    song_hash = smarty_data[0].get("hash")
+                    if isinstance(song_hash, str):
+                        return song_hash.strip().upper()
         return ""
 
     @handle("t1.kugou.com", r"https?://t1\.kugou\.com/[a-zA-Z0-9]+")
@@ -137,7 +143,7 @@ class KuGouParser(BaseParser):
         if _hash := self._extract_hash(html_text):
             return await self.parse_by_hash(_hash)
         else:
-            raise ParseException(f"未找到歌曲hash: {share_url}")
+            raise ParseException("酷狗分享页面未返回可用的歌曲信息，请重新分享歌曲链接")
 
     async def parse_by_hash(self, hash: str):
 

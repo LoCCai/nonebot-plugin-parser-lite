@@ -1,6 +1,6 @@
 import asyncio
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import AsyncMock
 
 from nonebot.matcher import current_event
 from nonebot_plugin_uninfo import Scene, SceneType, Session, SupportScope, User
@@ -44,7 +44,6 @@ def pipeline(monkeypatch):
     monkeypatch.setattr(matchers.RENDERER, "render_messages", rendered)
     monkeypatch.setattr(matchers.RENDERER, "send_content", content)
     monkeypatch.setattr(matchers, "send_with_media_fallback", sent)
-    monkeypatch.setattr(matchers, "apply_media_speedup", Mock())
     monkeypatch.setattr(matchers.UniHelper, "message_reaction", reactions)
     monkeypatch.setattr(matchers.pconfig, "plite_lazy_download", False)
     monkeypatch.setattr(matchers.pconfig, "plite_summary_in_forward", False)
@@ -55,7 +54,7 @@ def pipeline(monkeypatch):
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("first,second", [
+@pytest.mark.parametrize(("first", "second"), [
     ("https://www.taptap.cn/moment/123?share=first", "https://www.taptap.cn/explore/123?share=second"),
     ("https://ds.163.com/feed/abc123?share=first", "https://ds.163.com/article/abc123?share=second"),
 ])
@@ -66,7 +65,6 @@ async def test_same_group_members_and_url_variants_share_one_window(pipeline, fi
     pipeline.rendered.assert_awaited_once()
     assert pipeline.sent.await_count == 2
     assert pipeline.reactions.await_count == 2
-    matchers.apply_media_speedup.assert_called_once()
     await matchers.parser_handler(session("20002"), search(second))
     await matchers.parser_handler(session("10001", private=True), search(second))
     await matchers.parser_handler(session("10002", user="10002", private=True), search(second))

@@ -251,6 +251,9 @@ data.post; // [object] 动态/帖子核心数据
   "type": "image",
   "src": "file:///path/to/img.png",
   "layout": "grid", // 布局建议："grid" (网格) | "x" (横向推特流)
+  "width": 800, // 像素尺寸
+  "height": 400,
+  "orientation": "landscape", // "portrait"表示尺寸为竖图，"landscape"尺寸为横图
   "source_url": "http://..." // 原始网络地址（不建议模板直接请求）
 }
 ```
@@ -260,6 +263,9 @@ data.post; // [object] 动态/帖子核心数据
   "type": "cover",
   "src": "file:///path/to/img.png",
   "layout": "grid", // "grid" | "x"，封面不需要处理布局建议
+  "width": 800,
+  "height": 400,
+  "orientation": "landscape",
   "alt": "...",
   "source_url": "https://.."
 }
@@ -274,6 +280,9 @@ data.post; // [object] 动态/帖子核心数据
   "type": "live_photo",
   "src": "...",
   "layout": "grid",
+  "width": 800,
+  "height": 400,
+  "orientation": "landscape",
   "is_live": true,
   "source_url": "https://.."
 }
@@ -287,6 +296,9 @@ data.post; // [object] 动态/帖子核心数据
 {
   "type": "graphic",
   "src": "file:///path/to/img.png",
+  "width": 800,
+  "height": 400,
+  "orientation": "landscape",
   "alt": "...",
   "source_url": "https://.."
 }

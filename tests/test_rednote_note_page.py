@@ -9,7 +9,7 @@ from nonebot_plugin_parser_lite.parsers.rednote.page_state import (
 )
 
 
-@pytest.mark.parametrize("url,html", [
+@pytest.mark.parametrize(("url", "html"), [
     ("https://example.invalid/website-login/captcha", "captcha"),
     ("https://example.invalid/login", "login"),
     ("https://example.invalid/404", "missing"),
