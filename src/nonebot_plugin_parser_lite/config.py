@@ -2,7 +2,7 @@ from typing import Literal
 
 from anyio import Path
 from nonebot import get_driver, get_plugin_config
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, field_validator, model_validator
 
 from .constants import PlatformEnum
 from .path import cache_dir as _cache_dir
@@ -76,12 +76,10 @@ class Config(BaseModel):
     """是否在解析结果中添加原始URL二维码"""
     plite_disabled_platforms: list[PlatformEnum] = []
     """禁用的解析器"""
-    plite_parse_dedup_minutes: int | None = Field(default=None, ge=0, le=10080)
-    """同会话重复解析忽略分钟数；未设置时沿用旧项，0 仅抑制并发重复"""
+    plite_parse_dedup_minutes: int = 0
+    """同会话重复解析忽略分钟数；0 仅抑制并发重复"""
     plite_parse_dedup_platforms: list[PlatformEnum] | None = None
     """开启解析冷却的平台；None 为全部，空列表为全部关闭"""
-    plite_community_parse_dedup_minutes: int = Field(default=30, ge=0, le=10080)
-    """旧配置名，兼容已有环境配置；同样受平台范围配置控制"""
     plite_bili_video_codes: list[BiliVideoCodecs] = [
         BiliVideoCodecs.AVC,
         BiliVideoCodecs.AV1,
@@ -202,12 +200,12 @@ class Config(BaseModel):
 
     @property
     def parse_dedup_minutes(self) -> int:
-        if self.plite_parse_dedup_minutes is not None:
-            return self.plite_parse_dedup_minutes
-        return self.plite_community_parse_dedup_minutes
+        """同会话重复解析忽略分钟数"""
+        return self.plite_parse_dedup_minutes
 
     @property
     def parse_dedup_platforms(self) -> list[PlatformEnum] | None:
+        """开启解析冷却的平台"""
         return self.plite_parse_dedup_platforms
 
     @property
