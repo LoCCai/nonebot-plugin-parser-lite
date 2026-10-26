@@ -70,25 +70,13 @@ async def init_disabled_targets() -> None:
             _DISABLED_TARGETS_SET.clear()
             _DISABLED_TARGETS_SET.update(targets)
         else:
-            targets = _DISABLED_TARGETS_SET.copy()
-            legacy_path = _DISABLED_TARGETS_PATH.with_name("disabled_groups.json")
-            if await legacy_path.exists():
-                legacy = json.loads(await legacy_path.read_text(encoding="utf-8"))
-                for key in legacy:
-                    scope, separator, group_id = key.rpartition("_")
-                    if not separator or not scope or not group_id.isdecimal():
-                        raise ValueError("旧版解析关闭名单存在不支持的会话，请先核对迁移")
-                    targets.add(f"{scope}_GROUP_{group_id}")
-            await _write_disabled_targets(targets)
-            _DISABLED_TARGETS_SET.clear()
-            _DISABLED_TARGETS_SET.update(targets)
+            await _write_disabled_targets(_DISABLED_TARGETS_SET)
 
 
 # Rule
 def is_enabled(session: Uninfo) -> bool:
     return (
-        f"{session.scope}_{session.user.id}" not in pconfig.plite_blacklist_users
-        and _make_user_key(session) not in _DISABLED_TARGETS_SET
+        _make_user_key(session) not in _DISABLED_TARGETS_SET
         and _make_target_key(session) not in _DISABLED_TARGETS_SET
     )
 

@@ -76,8 +76,6 @@ class Config(BaseModel):
     """是否在解析结果中添加原始URL二维码"""
     plite_disabled_platforms: list[PlatformEnum] = []
     """禁用的解析器"""
-    plite_blacklist_users: list[str] = []
-    """兼容已有的 scope_user 黑名单；新开关使用 disabled_targets.json"""
     plite_community_parse_dedup_minutes: int = Field(default=30, ge=0, le=10080)
     """TapTap／大神同会话重复解析忽略分钟数；0 仅抑制并发重复"""
     plite_bili_video_codes: list[BiliVideoCodecs] = [
