@@ -199,14 +199,15 @@ plite_max_size=90
 # "rednote", "taptap", "tieba", "weibo", "wmpvp", "x", "zhihu", "zlb"]
 plite_disabled_platforms=["x"]
 
-# [可选] TapTap、网易大神：同会话相同内容成功解析后的忽略分钟数，默认 30，范围 0–10080
-# 同群不同成员和不同分享链接按帖子 ID 合并；不同群、私聊分别计时
+# [可选] 所有已启用平台：同会话相同链接或编号成功解析后的忽略分钟数，默认 30，范围 0–10080
+# 同群不同成员共享；TapTap、大神的不同分享链接按帖子 ID 合并；不同群、私聊分别计时
 # 忽略时不回复、不渲染、不添加表情反馈；延迟下载仍为请求成员登记下载会话
 # 并发重复等待当前请求；发送前失败或取消时最多接续重试一次，成功后静默忽略
 # 发送开始后失败不自动接续；手动重试可能重复已送达的部分消息
 # 冷却仅在当前进程内有效，重启会清空，多进程不共享；成功记录保留至过期，不按容量提前淘汰
 # 0 关闭成功后的冷却，仍避免处理中重复解析；修改配置后重启 Bot 生效
-plite_community_parse_dedup_minutes=30
+# 兼容旧配置名 plite_community_parse_dedup_minutes；同时配置时以新名称为准
+plite_parse_dedup_minutes=30
 
 # [可选] 是否在解析结果中附加原始URL
 plite_append_url=False

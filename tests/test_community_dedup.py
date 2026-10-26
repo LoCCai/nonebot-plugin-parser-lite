@@ -2,6 +2,7 @@ import asyncio
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
+from nonebot import get_plugin_config
 from nonebot.matcher import current_event
 from nonebot_plugin_uninfo import Scene, SceneType, Session, SupportScope, User
 import pytest
@@ -11,8 +12,13 @@ from nonebot_plugin_parser_lite import matchers
 from nonebot_plugin_parser_lite.config import Config
 from nonebot_plugin_parser_lite.matchers import community_dedup as cooldown
 from nonebot_plugin_parser_lite.matchers.rule import SearchResult
+from nonebot_plugin_parser_lite.parsers.bilibili import BilibiliParser
+from nonebot_plugin_parser_lite.parsers.douyin import DouyinParser
 from nonebot_plugin_parser_lite.parsers.ds import DsParser
+from nonebot_plugin_parser_lite.parsers.kuaishou import KuaiShouParser
+from nonebot_plugin_parser_lite.parsers.netease import NCMParser
 from nonebot_plugin_parser_lite.parsers.taptap import TapTapParser
+from nonebot_plugin_parser_lite.parsers.weibo import WeiBoParser
 
 
 def session(target="20001", user="10001", *, private=False):
@@ -23,8 +29,9 @@ def session(target="20001", user="10001", *, private=False):
     )
 
 
-def search(url):
-    parser = TapTapParser if "taptap.cn" in url else DsParser
+def search(url, parser=None):
+    if parser is None:
+        parser = TapTapParser if "taptap.cn" in url else DsParser
     keyword, searched = parser.search_url(url)
     return SearchResult(url, keyword, searched)
 
@@ -47,7 +54,7 @@ def pipeline(monkeypatch):
     monkeypatch.setattr(matchers.UniHelper, "message_reaction", reactions)
     monkeypatch.setattr(matchers.pconfig, "plite_lazy_download", False)
     monkeypatch.setattr(matchers.pconfig, "plite_summary_in_forward", False)
-    monkeypatch.setattr(matchers.pconfig, "plite_community_parse_dedup_minutes", 30)
+    monkeypatch.setattr(matchers.pconfig, "plite_parse_dedup_minutes", 30)
     token = current_event.set(object())
     yield SimpleNamespace(parsed=parsed, rendered=rendered, sent=sent, reactions=reactions)
     current_event.reset(token)
@@ -74,7 +81,7 @@ async def test_same_group_members_and_url_variants_share_one_window(pipeline, fi
 @pytest.mark.asyncio
 @pytest.mark.parametrize("minutes", [0, 30])
 async def test_inflight_duplicates_wait_silently_for_success(pipeline, monkeypatch, minutes):
-    monkeypatch.setattr(matchers.pconfig, "plite_community_parse_dedup_minutes", minutes)
+    monkeypatch.setattr(matchers.pconfig, "plite_parse_dedup_minutes", minutes)
     started, finish = asyncio.Event(), asyncio.Event()
 
     async def parse(_sr):
@@ -302,17 +309,57 @@ async def test_lazy_duplicates_register_each_member_without_resending(pipeline, 
         await asyncio.gather(*tasks, return_exceptions=True)
 
 
-def test_other_platforms_are_outside_community_cooldown():
-    sr = SimpleNamespace(keyword="www.bilibili.com")
-    assert cooldown.community_parse_key("QQClient_GROUP_1", sr) is None
+@pytest.mark.asyncio
+@pytest.mark.parametrize(("parser", "url"), [
+    (BilibiliParser, "https://www.bilibili.com/video/BV1xx411c7mD"),
+    (DouyinParser, "https://www.douyin.com/video/123456789"),
+    (KuaiShouParser, "https://v.kuaishou.com/abc123"),
+    (NCMParser, "https://music.163.com/song?id=123456"),
+    (WeiBoParser, "https://m.weibo.cn/status/123456789"),
+])
+async def test_other_platforms_share_the_configured_cooldown(pipeline, parser, url):
+    sr = search(url, parser)
+    await matchers.parser_handler(session(), sr)
+    await matchers.parser_handler(session(user="10002"), sr)
+    pipeline.parsed.assert_awaited_once()
+    pipeline.rendered.assert_awaited_once()
+    assert pipeline.sent.await_count == 2
+    assert pipeline.reactions.await_count == 2
+    await matchers.parser_handler(session("20002"), sr)
+    await matchers.parser_handler(session("10001", private=True), sr)
+    assert pipeline.parsed.await_count == 3
+
+
+def test_unlisted_platforms_also_receive_a_cooldown_key():
+    sr = SimpleNamespace(keyword="future.example.com", cache_key="future:post/123")
+    assert cooldown.community_parse_key("QQClient_GROUP_1", sr) == (
+        "parse", "QQClient_GROUP_1", "future:post/123",
+    )
 
 
 @pytest.mark.asyncio
-async def test_configured_minutes_control_actual_matcher_cooldown(pipeline, monkeypatch):
+async def test_distinct_content_and_bilibili_pages_are_not_suppressed(pipeline):
+    for url in (
+        "https://www.bilibili.com/video/BV1xx411c7mD?p=1",
+        "https://www.bilibili.com/video/BV1xx411c7mD?p=2",
+        "https://www.bilibili.com/video/BV1xx411c7mE?p=1",
+    ):
+        sr = search(url, BilibiliParser)
+        await matchers.parser_handler(session(), sr)
+        await matchers.parser_handler(session(user="10002"), sr)
+    assert pipeline.parsed.await_count == 3
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(("parser", "url"), [
+    (TapTapParser, "https://www.taptap.cn/moment/123"),
+    (BilibiliParser, "https://www.bilibili.com/video/BV1xx411c7mD"),
+])
+async def test_configured_minutes_control_actual_matcher_cooldown(pipeline, monkeypatch, parser, url):
     clock = [100.0]
     monkeypatch.setattr(cooldown, "time", SimpleNamespace(monotonic=lambda: clock[0]))
-    monkeypatch.setattr(matchers.pconfig, "plite_community_parse_dedup_minutes", 2)
-    sr = search("https://www.taptap.cn/moment/123")
+    monkeypatch.setattr(matchers.pconfig, "plite_parse_dedup_minutes", 2)
+    sr = search(url, parser)
     await matchers.parser_handler(session(), sr)
     clock[0] = 219
     await matchers.parser_handler(session(), sr)
@@ -323,19 +370,46 @@ async def test_configured_minutes_control_actual_matcher_cooldown(pipeline, monk
 
 
 @pytest.mark.asyncio
-async def test_zero_minutes_allows_completed_repeats(pipeline, monkeypatch):
-    monkeypatch.setattr(matchers.pconfig, "plite_community_parse_dedup_minutes", 0)
-    sr = search("https://ds.163.com/feed/abc123")
+@pytest.mark.parametrize(("parser", "url"), [
+    (DsParser, "https://ds.163.com/feed/abc123"),
+    (BilibiliParser, "https://www.bilibili.com/video/BV1xx411c7mD"),
+])
+async def test_zero_minutes_allows_completed_repeats(pipeline, monkeypatch, parser, url):
+    monkeypatch.setattr(matchers.pconfig, "plite_parse_dedup_minutes", 0)
+    sr = search(url, parser)
     await matchers.parser_handler(session(), sr)
     await matchers.parser_handler(session(), sr)
     assert pipeline.parsed.await_count == 2
 
 
-def test_config_default_and_validated_range():
+@pytest.mark.parametrize("field", ["plite_parse_dedup_minutes", "plite_community_parse_dedup_minutes"])
+def test_config_default_and_validated_range(field):
     from pydantic import ValidationError
 
-    assert Config().community_parse_dedup_minutes == 30
-    assert Config(plite_community_parse_dedup_minutes="15").community_parse_dedup_minutes == 15
+    assert Config().parse_dedup_minutes == 30
+    assert Config(**{field: "15"}).parse_dedup_minutes == 15
+    assert Config(**{field: 0}).parse_dedup_minutes == 0
+    assert Config(**{field: 10080}).parse_dedup_minutes == 10080
     for value in (-1, 10081, 1.5, "invalid"):
         with pytest.raises(ValidationError):
-            Config(plite_community_parse_dedup_minutes=value)
+            Config(**{field: value})
+
+
+@pytest.mark.parametrize("minutes", [0, 5])
+def test_new_config_name_takes_precedence_over_legacy_name(minutes):
+    config = Config(plite_parse_dedup_minutes=minutes, plite_community_parse_dedup_minutes=15)
+    assert config.parse_dedup_minutes == minutes
+
+
+@pytest.mark.parametrize("field", ["PLITE_PARSE_DEDUP_MINUTES", "PLITE_COMMUNITY_PARSE_DEDUP_MINUTES"])
+def test_plugin_loads_cooldown_from_new_and_legacy_environment_names(monkeypatch, field):
+    monkeypatch.delenv("PLITE_PARSE_DEDUP_MINUTES", raising=False)
+    monkeypatch.delenv("PLITE_COMMUNITY_PARSE_DEDUP_MINUTES", raising=False)
+    monkeypatch.setenv(field, "12")
+    assert get_plugin_config(Config).parse_dedup_minutes == 12
+
+
+def test_plugin_prefers_new_environment_name_even_when_disabling_cooldown(monkeypatch):
+    monkeypatch.setenv("PLITE_PARSE_DEDUP_MINUTES", "0")
+    monkeypatch.setenv("PLITE_COMMUNITY_PARSE_DEDUP_MINUTES", "15")
+    assert get_plugin_config(Config).parse_dedup_minutes == 0

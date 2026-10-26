@@ -76,8 +76,10 @@ class Config(BaseModel):
     """是否在解析结果中添加原始URL二维码"""
     plite_disabled_platforms: list[PlatformEnum] = []
     """禁用的解析器"""
+    plite_parse_dedup_minutes: int | None = Field(default=None, ge=0, le=10080)
+    """所有平台同会话重复解析忽略分钟数；未设置时沿用旧项，0 仅抑制并发重复"""
     plite_community_parse_dedup_minutes: int = Field(default=30, ge=0, le=10080)
-    """TapTap／大神同会话重复解析忽略分钟数；0 仅抑制并发重复"""
+    """旧配置名，兼容已有环境配置；同样对所有平台生效"""
     plite_bili_video_codes: list[BiliVideoCodecs] = [
         BiliVideoCodecs.AVC,
         BiliVideoCodecs.AV1,
@@ -197,7 +199,9 @@ class Config(BaseModel):
         return self.plite_disabled_platforms
 
     @property
-    def community_parse_dedup_minutes(self) -> int:
+    def parse_dedup_minutes(self) -> int:
+        if self.plite_parse_dedup_minutes is not None:
+            return self.plite_parse_dedup_minutes
         return self.plite_community_parse_dedup_minutes
 
     @property

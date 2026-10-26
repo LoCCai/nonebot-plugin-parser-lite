@@ -1,4 +1,4 @@
-"""Process-local, time-limited cooldown for repeated community post parsing."""
+"""Process-local, time-limited cooldown for repeated parsing on all platforms."""
 
 import asyncio
 from collections import OrderedDict
@@ -74,17 +74,15 @@ class CommunityParseDeduplicator:
 community_parse_dedup = CommunityParseDeduplicator()
 
 
-def community_parse_key(target_key: str, search_result) -> tuple[str, ...] | None:
+def community_parse_key(target_key: str, search_result) -> tuple[str, ...]:
     fields = {
         "www.taptap.cn": ("taptap", "moment_id"),
         "ds.163.com": ("ds", "feed_id"),
     }
     source_field = fields.get(search_result.keyword.lower())
-    if source_field is None:
-        return None
-    source, field = source_field
-    content_id = search_result.searched.get(field)
-    if not content_id:
-        return None
-    # Canonical IDs fold moment/explore and feed/article URL variants.
-    return source, target_key, str(content_id)
+    if source_field is not None:
+        source, field = source_field
+        if content_id := search_result.searched.get(field):
+            # Canonical IDs fold moment/explore and feed/article URL variants.
+            return source, target_key, str(content_id)
+    return "parse", target_key, search_result.cache_key
