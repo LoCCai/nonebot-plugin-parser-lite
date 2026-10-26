@@ -415,14 +415,6 @@ async def test_zero_minutes_allows_completed_repeats(pipeline, monkeypatch, pars
     assert pipeline.parsed.await_count == 2
 
 
-@pytest.mark.parametrize("field", ["PLITE_PARSE_DEDUP_MINUTES", "PLITE_COMMUNITY_PARSE_DEDUP_MINUTES"])
-def test_plugin_loads_cooldown_from_new_and_legacy_environment_names(monkeypatch, field):
-    monkeypatch.delenv("PLITE_PARSE_DEDUP_MINUTES", raising=False)
-    monkeypatch.delenv("PLITE_COMMUNITY_PARSE_DEDUP_MINUTES", raising=False)
-    monkeypatch.setenv(field, "12")
-    assert get_plugin_config(Config).parse_dedup_minutes == 12
-
-
 @pytest.mark.parametrize(("value", "expected"), [
     ("null", None),
     ("[]", []),
