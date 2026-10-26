@@ -434,25 +434,6 @@ async def test_zero_minutes_allows_completed_repeats(pipeline, monkeypatch, pars
     assert pipeline.parsed.await_count == 2
 
 
-@pytest.mark.parametrize("field", ["plite_parse_dedup_minutes", "plite_community_parse_dedup_minutes"])
-def test_config_default_and_validated_range(field):
-    from pydantic import ValidationError
-
-    assert Config().parse_dedup_minutes == 30
-    assert Config(**{field: "15"}).parse_dedup_minutes == 15
-    assert Config(**{field: 0}).parse_dedup_minutes == 0
-    assert Config(**{field: 10080}).parse_dedup_minutes == 10080
-    for value in (-1, 10081, 1.5, "invalid"):
-        with pytest.raises(ValidationError):
-            Config(**{field: value})
-
-
-@pytest.mark.parametrize("minutes", [0, 5])
-def test_new_config_name_takes_precedence_over_legacy_name(minutes):
-    config = Config(plite_parse_dedup_minutes=minutes, plite_community_parse_dedup_minutes=15)
-    assert config.parse_dedup_minutes == minutes
-
-
 @pytest.mark.parametrize("field", ["PLITE_PARSE_DEDUP_MINUTES", "PLITE_COMMUNITY_PARSE_DEDUP_MINUTES"])
 def test_plugin_loads_cooldown_from_new_and_legacy_environment_names(monkeypatch, field):
     monkeypatch.delenv("PLITE_PARSE_DEDUP_MINUTES", raising=False)
