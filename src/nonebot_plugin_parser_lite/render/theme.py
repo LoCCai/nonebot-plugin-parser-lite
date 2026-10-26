@@ -212,7 +212,7 @@ async def _load_theme(root: Path, builtin_root: Path) -> ThemeDefinition | None:
             fallback_root=None if resolved_root == builtin_root else builtin_root,
         )
     except (OSError, json.JSONDecodeError, ThemeError):
-        # 单个损坏主题不应阻断内置主题和其他主题的发现。
+        # 单个损坏主题不应阻断内置主题和其他主题的发现
         return None
 
 

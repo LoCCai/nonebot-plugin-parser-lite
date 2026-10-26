@@ -635,7 +635,7 @@ class VideoDownloadURLDataDetecter:
 
         # 选择最优音频流：基于评分的 key 函数
         def audio_score(s: AudioStreamDownloadURL) -> int:
-            """按音频档位的选择优先级排序。"""
+            """按音频档位的选择优先级排序"""
             return s.audio_quality.selection_rank
 
         # 取最优（线性扫描）

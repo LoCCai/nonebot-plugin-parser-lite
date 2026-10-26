@@ -437,7 +437,7 @@ class ParseResult:
     """渲染图片"""
 
     def iter_sendable_media(self) -> Iterator[MediaContent]:
-        """依次遍历主帖和一层转发中需要发送的媒体，不包含评论。"""
+        """依次遍历主帖和转发中需要发送的媒体"""
         repost_content = self.repost.content if self.repost else ()
         for content in chain(self.content, repost_content):
             if isinstance(content, MediaContent) and content.need_send:

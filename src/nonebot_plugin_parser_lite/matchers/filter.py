@@ -28,7 +28,7 @@ async def _write_disabled_targets(targets: set[str]) -> None:
 
 
 async def set_target_enabled(target_key: str, enabled: bool) -> bool:
-    """原子更新开关，返回状态是否发生变化。"""
+    """原子更新开关，返回状态是否发生变化"""
     async with _DISABLED_TARGETS_LOCK:
         if (target_key not in _DISABLED_TARGETS_SET) == enabled:
             return False
