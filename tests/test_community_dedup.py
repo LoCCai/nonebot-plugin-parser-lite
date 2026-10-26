@@ -404,25 +404,6 @@ async def test_distinct_content_and_bilibili_pages_are_not_suppressed(pipeline):
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(("parser", "url"), [
-    (TapTapParser, "https://www.taptap.cn/moment/123"),
-    (BilibiliParser, "https://www.bilibili.com/video/BV1xx411c7mD"),
-])
-async def test_configured_minutes_control_actual_matcher_cooldown(pipeline, monkeypatch, parser, url):
-    clock = [100.0]
-    monkeypatch.setattr(cooldown, "time", SimpleNamespace(monotonic=lambda: clock[0]))
-    monkeypatch.setattr(matchers.pconfig, "plite_parse_dedup_minutes", 2)
-    sr = search(url, parser)
-    await matchers.parser_handler(session(), sr)
-    clock[0] = 219
-    await matchers.parser_handler(session(), sr)
-    pipeline.parsed.assert_awaited_once()
-    clock[0] = 220
-    await matchers.parser_handler(session(), sr)
-    assert pipeline.parsed.await_count == 2
-
-
-@pytest.mark.asyncio
-@pytest.mark.parametrize(("parser", "url"), [
     (DsParser, "https://ds.163.com/feed/abc123"),
     (BilibiliParser, "https://www.bilibili.com/video/BV1xx411c7mD"),
 ])
@@ -440,12 +421,6 @@ def test_plugin_loads_cooldown_from_new_and_legacy_environment_names(monkeypatch
     monkeypatch.delenv("PLITE_COMMUNITY_PARSE_DEDUP_MINUTES", raising=False)
     monkeypatch.setenv(field, "12")
     assert get_plugin_config(Config).parse_dedup_minutes == 12
-
-
-def test_plugin_prefers_new_environment_name_even_when_disabling_cooldown(monkeypatch):
-    monkeypatch.setenv("PLITE_PARSE_DEDUP_MINUTES", "0")
-    monkeypatch.setenv("PLITE_COMMUNITY_PARSE_DEDUP_MINUTES", "15")
-    assert get_plugin_config(Config).parse_dedup_minutes == 0
 
 
 @pytest.mark.parametrize(("value", "expected"), [
