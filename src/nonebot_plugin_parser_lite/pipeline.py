@@ -34,17 +34,37 @@ async def _clean_runtime_cache() -> None:
     clear_result_cache()
 
 
+_runtime_started = False
+
+
 def _ensure_runtime_started() -> None:
+    global _runtime_started
     scheduler.add_job(
         _clean_runtime_cache,
         seconds=2 * 60 * 60,
         id=_CACHE_JOB_ID,
     )
+    if _runtime_started:
+        return
+    _runtime_started = True
+
+    import asyncio
+
+    from .render.image import warmup_themes
+    from .utils.cache import CacheManager
+
+    async def _warmup() -> None:
+        await CacheManager.warmup_all()
+        await warmup_themes()
+
+    asyncio.get_running_loop().create_task(_warmup())
 
 
 async def shutdown_runtime() -> None:
     from .download import DOWNLOADER
 
+    global _runtime_started
+    _runtime_started = False
     await scheduler.shutdown()
     await DOWNLOADER.aclose()
     clear_result_cache()
@@ -74,7 +94,7 @@ class MatchResult:
 
     @property
     def cache_key(self) -> str:
-        return f"{self.keyword}:{self.searched.cache_key}"
+        return self.searched.cache_key
 
 
 @dataclass(frozen=True, slots=True)
@@ -113,22 +133,15 @@ class Parser:
 
         patterns = sorted(
             (
-                (keyword, pattern, rules, parser_type)
+                (rule, parser_type)
                 for parser_type in self._types()
-                for keyword, pattern, rules in parser_type._key_patterns
+                for rule in parser_type._key_patterns
             ),
-            key=lambda item: -len(item[0]),
+            key=lambda item: -len(item[0].keyword),
         )
-        for keyword, pattern, rules, parser_type in patterns:
-            if keyword not in text:
-                continue
-            matched = pattern.search(text)
-            if matched is None:
-                continue
-            searched = MatchWithParams(matched)
-            searched.param_rules = rules
-            if parser_type._match_param_rules(searched, rules):
-                return MatchResult(text, keyword, searched, parser_type)
+        for rule, parser_type in patterns:
+            if searched := rule.match(text):
+                return MatchResult(text, rule.keyword, searched, parser_type)
         raise ParseException("文本中没有可解析的内容")
 
     def _instance(self, parser_type: type[BaseParser]) -> BaseParser:

@@ -6,7 +6,32 @@
 
 ## 📦 安装与项目集成
 
-将 `src/nonebot_plugin_parser_lite` 整个目录复制到你的项目中
+需要 Python **3.11 或更高版本**
+
+从 Git 或源码安装还需要 Rust 工具链用于编译模块。以下方式任选其一
+
+### 下载编译产物安装
+
+从 Release 下载独立版 wheel，或在 [Actions](https://github.com/sokoko-org/nonebot-plugin-parser-lite/actions/workflows/build.yml) 下载安装对应平台的产物
+
+### 从 Git 或源码安装
+
+```shell
+python -m pip install "nonebot-plugin-parser-lite-standalone @ git+https://github.com/sokoko-org/nonebot-plugin-parser-lite.git@standalone"
+```
+
+安装完成后即可在项目中导入使用
+
+### 手动复制到项目
+
+在仓库根目录安装依赖并编译 QMC 模块(或者从产物 whl 解压)
+
+```shell
+python -m pip install "setuptools>=77" "setuptools-rust>=1.12,<2"
+python setup.py build_ext --inplace
+```
+
+随后将 `src/nonebot_plugin_parser_lite` 复制到你的项目中
 
 ```text
 your_project/
@@ -17,7 +42,11 @@ your_project/
 └── your_code.py
 ```
 
-同时，在你的项目中安装 `requirements.txt` 中列出的基础依赖即可
+并在项目环境安装运行依赖
+
+```shell
+python -m pip install -r requirements.txt
+```
 
 ## 🚀 快速上手
 
@@ -75,10 +104,6 @@ image_format, image = await render_theme_data(render_data)
 Path(f"post.{image_format}").write_bytes(image)
 ```
 
-图片格式默认读取 `plite_render_format` 配置，也可传入 `image_format` 单次覆盖。
-配色默认按 `plite_day_range` 配置自动选择日间或夜间模式，也可传入 `color_scheme` 单次覆盖。
-返回的格式是实际编码格式；长图超出 WebP 尺寸限制时会改用 JPEG
-
 ### 2. 按需加载指定平台
 
 若只需使用特定平台，建议直接导入对应 Parser，避免加载无用模块
@@ -119,3 +144,7 @@ configure(plite_max_comments=10, plite_disabled_platforms=["x"])
 - 缓存根目录默认为当前目录下的 `.parser-lite`（可通过配置项 `PARSER_LITE_BASE_DIR` 修改）
 - 首次进入异步解析时，会在当前事件循环自动注册周期缓存清理任务
 - 应用程序退出前，可调用 `await shutdown_runtime()` 关闭后台定时任务
+
+## 第三方许可
+
+本项目自身代码采用 [MIT](LICENSE)。第三方代码和资源保留各自许可，来源、许可例外及修改说明见 [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md)
