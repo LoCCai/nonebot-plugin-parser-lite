@@ -123,10 +123,12 @@ class Config(BaseModel):
     """渲染主题 ID，主题目录可放在插件数据目录的 themes 下"""
     plite_theme_dirs: list[str] = []
     """额外的主题目录，可填写主题目录或包含多个主题的目录"""
-    plite_bili_cdn_region: str = "zh"
-    """哔哩哔哩 CDN 地区；支持 zh、en、ja、proxy 线路"""
+    plite_bili_cdn_region: Literal["zh", "en", "ja", "proxy", "default"] = "default"
+    """哔哩哔哩 CDN 地区；支持 zh、en、ja、proxy 线路， default 即不修改地区"""
     plite_bili_cdn_domain: str | None = None
     """自定义哔哩哔哩 CDN 域名，优先于地区配置"""
+    plite_emoji_style: Literal["system", "twitter", "google"] = "system"
+    """emoji 样式，system 优先系统字体并以 Twemoji 兜底，twitter/google 固定使用下载字体"""
     plite_render_format: Literal["jpeg", "webp"] = "webp"
     """渲染图片格式，jpeg会丢失透明度但可能兼容性更好"""
     plite_media_speedup_rules: list[str] = []
@@ -341,7 +343,7 @@ class Config(BaseModel):
         return self.plite_theme_dirs
 
     @property
-    def bili_cdn_region(self) -> str:
+    def bili_cdn_region(self) -> Literal["zh", "en", "ja", "proxy", "default"]:
         """哔哩哔哩 CDN 地区"""
         return self.plite_bili_cdn_region
 
@@ -349,6 +351,10 @@ class Config(BaseModel):
     def bili_cdn_domain(self) -> str | None:
         """自定义哔哩哔哩 CDN 域名"""
         return self.plite_bili_cdn_domain
+
+    @property
+    def emoji_style(self) -> Literal["system", "twitter", "google"]:
+        return self.plite_emoji_style
 
     @property
     def render_format(self) -> Literal["jpeg", "webp"]:
